@@ -13,108 +13,114 @@ import com.fullstackteam.androidproject.model.AnimeListItem
 import kotlin.concurrent.thread
 
 class AnimeListActivity : AppCompatActivity() {
+
     private lateinit var binding: ActivityAnimeListBinding
+
     private var size: Int = 0
     private var totalPages: Int = 0
     private var pageNumber: Int = 1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityAnimeListBinding.inflate(layoutInflater).apply {
-            val view = root
-            setContentView(view)
-            buttonGoBack.text = "Regresar"
-            getAnimeList()
-        }
+
+        binding = ActivityAnimeListBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        binding.buttonGoBack.text = "Regresar"
+
+        getAnimeList()
     }
-    
-    // Función para volver a la actividad anterior
+
     fun goBack(view: View) {
         finish()
     }
-    
-    // Función para actualizar la lista de animes
+
     fun update(view: View) {
         getAnimeList()
     }
-    
-    // Función para obtener la cantidad de animes en la base de datos
+
     fun getSize(view: View) {
-        if (size != 0){
-            runOnUiThread {
-                Toast.makeText(this, "$size Animes en la Base de Datos", Toast.LENGTH_SHORT).show()
-            }
-        } else{
-            runOnUiThread {
-                Toast.makeText(this, "Vuelva a actualizar la Lista de Animes", Toast.LENGTH_SHORT).show()
-            }
+        if (size > 0) {
+            Toast.makeText(this, "$size Animes en la Base de Datos", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(this, "Actualiza la lista primero", Toast.LENGTH_SHORT).show()
         }
     }
-    
-     // Función para obtener la lista de animes desde la API y mostrarla en el RecyclerView
+
     private fun getAnimeList() {
         thread {
             try {
-                // Llamada a la API para obtener la lista de animes
-                val animeList = AnimeDBClient.service.animeList(pageNumber)
-                val totalAnimesPages = AnimeDBClient.service.totalAnimesPages()
-                val responseAnimeList = animeList.execute()
-                val animeListBody = responseAnimeList.body()
 
-                val responseTotalAnimesPages = totalAnimesPages.execute()
-                val totalAnimesPagesBody = responseTotalAnimesPages.body()
+                val animeCall = AnimeDBClient.service.animeList(pageNumber)
+                val totalCall = AnimeDBClient.service.totalAnimesPages()
 
-                // Verificación de si la respuesta de la API fue exitosa
-                if (responseAnimeList.isSuccessful && animeListBody != null) {
+                val responseAnime = animeCall.execute()
+                val animeListBody = responseAnime.body()
+
+                val responseTotal = totalCall.execute()
+                val totalBody = responseTotal.body()
+
+                if (responseAnime.isSuccessful && animeListBody != null) {
+
                     runOnUiThread {
-                        // Asignación de la cantidad de animes en la base de datos
-                        size = totalAnimesPagesBody!!.total_animes
-                        totalPages = totalAnimesPagesBody!!.total_pages
-                        // Configuración del RecyclerView con la lista de animes obtenida
-                        binding.recyclerViewAnimeList.setHasFixedSize(true)
-                        val layoutManager = LinearLayoutManager(baseContext)
-                        binding.recyclerViewAnimeList.layoutManager = layoutManager
-                        binding.recyclerViewAnimeList.adapter = AnimeAdapter(animeListBody) { onItemClick(it) }
+
+                        // SAFE NULL HANDLING
+                        size = totalBody?.totalAnimes ?: 0
+                        totalPages = totalBody?.totalPages ?: 0
+
+                        binding.recyclerViewAnimeList.apply {
+                            setHasFixedSize(true)
+                            layoutManager = LinearLayoutManager(this@AnimeListActivity)
+                            adapter = AnimeAdapter(animeListBody) { onItemClick(it) }
+                        }
                     }
+
                 } else {
-                    // En caso de una respuesta fallida de la API, se muestra un mensaje de error
                     runOnUiThread {
                         Toast.makeText(
                             this,
-                            "La llamada a la API falló con el código de respuesta ${responseAnimeList.code()}", Toast.LENGTH_SHORT).show()
+                            "Error API: ${responseAnime.code()}",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
-            } catch (exception: Exception) {
-                // En caso de una excepción durante la llamada a la API, se muestra un mensaje de error
+
+            } catch (e: Exception) {
                 runOnUiThread {
-                    Toast.makeText(this,"La llamada a la API falló con una excepción $exception", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this,
+                        "Error de conexión: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
         }
     }
 
     fun getNext(view: View) {
-        if (pageNumber > 0 && pageNumber < totalPages) {
-            pageNumber += 1
+        if (pageNumber < totalPages) {
+            pageNumber++
             getAnimeList()
         }
     }
 
     fun getPrevious(view: View) {
-        if (pageNumber > 1 && pageNumber <= totalPages) {
-            pageNumber -= 1
+        if (pageNumber > 1) {
+            pageNumber--
             getAnimeList()
         }
     }
-    
-    // Función para manejar el click en un item del RecyclerView
+
     private fun onItemClick(anime: AnimeListItem) {
         val intent = Intent(this, AnimeDetailActivity::class.java).apply {
             putExtra("name", anime.name)
             putExtra("description", anime.description)
             putExtra("episodes", anime.episodes)
             putExtra("season", anime.season)
-            putExtra("genres", anime.genres)
+
+            // FIX CRÍTICO
+            putExtra("genres", anime.genres.joinToString(", "))
+
             putExtra("image_url", anime.image_url)
         }
         startActivity(intent)

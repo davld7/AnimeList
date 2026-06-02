@@ -1,3 +1,3 @@
 package com.fullstackteam.androidproject.model
 
-class AnimeList : ArrayList<AnimeListItem>()
+typealias AnimeList = List<AnimeListItem>
