@@ -10,9 +10,7 @@ Grupo #2 *Full Stack Team*.
 
 - Jonathan Downs.
 
-Lista de Animes: https://anime-list-api-nhs7.onrender.com/animes/
-
-Documentación: https://anime-list-api-nhs7.onrender.com/docs
+Documentación: https://anime-list-api.fastapicloud.dev/docs
 
 <img src="https://github.com/davld7/AnimeList/blob/master/screenshots/apk.jpg?raw=true" alt="APK" width="100%" />
 
